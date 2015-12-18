@@ -136,7 +136,8 @@ function makeMaterial(customMatParams) {
 		color: 0xffffff,
 		specular: 0xffffff,
 		shininess: 100,
-		shading: THREE.SmoothShading
+		shading: THREE.SmoothShading,
+		wireframe: true
 	}
 	var matParams = extend(defaultMatParams, customMatParams);
 	return new THREE.MeshPhongMaterial(matParams);

@@ -32,11 +32,15 @@
 
 	// camera
 	var camera = new THREE.PerspectiveCamera(60, width/height, 0.1, 1000);
-	camera.position.set(10, 20, 20);
-	camera.lookAt(new THREE.Vector3(0,0,0));
+	camera.position.set(0, 40, 20);
+	camera.lookAt(new THREE.Vector3(0,0,2));
 
 	// floor plane
+	var arenaStepsDepth = 12;
+	var arenaStepsCirc = 18;
+
 	var arenaSize = 20;
+	var arenaDepth = arenaStepsDepth * 10;
 	var floorGeom = new THREE.CircleGeometry(arenaSize, 64);
 	var floor = new THREE.Mesh(floorGeom, makeMaterial({color:0x009f2f, shininess:1}));
 	scene.add(floor);
@@ -50,6 +54,9 @@
 	var rotFriction = 0.95;
 	var moveFriction = 0.98;
 
+    function Round(pos, max, steps) {
+    	return Math.floor(pos * steps) * max / steps;
+    }
 
 	// ---------------------------------------------
 	// playable "character"
@@ -101,18 +108,21 @@
 		var thingMass = 50;
 
 		// motion variables
-		this.angle = 0;
+		this.angle = 180;
 		this.angularVel = 0;
 		this.vel = new THREE.Vector3(0,0,0);
+
+		// position var
+		this.posAngle = 0;
 
 		// initialise function
 		this.init = function() {
 			scene.add(this.mesh);
-			this.mesh.position.set(0, 1, 0);
+			this.mesh.position.set(0, 1, arenaSize);
 		}
 
 		// updates movements
-		this.update = function() {
+		this.update = function(state, t, dt) {
 
 			// update angle
 			var rotForce = controller.rightLeft();
@@ -122,7 +132,7 @@
 			this.angularVel += rotAccel;
 
 			this.angle -= this.angularVel;	
-			this.mesh.rotation.y = toRad(this.angle);
+			this.mesh.rotation.y = toRad(-this.angle);
 
 			this.angularVel *= rotFriction; // simulated friction
 
@@ -132,7 +142,7 @@
 			force.multiplyScalar(controller.forwardBack());
 
 			// Keep it inside the circle
-			var outBy = this.mesh.position.length() > arenaSize;
+			/*var outBy = this.mesh.position.length() > arenaSize;
 			if (outBy > 0)
 			{
 				var pushBack = this.mesh.position.clone();
@@ -140,13 +150,27 @@
 				pushBack.negate();
 				//pushBack.normalize();
 				force.add(pushBack);
-			}
+			}*/
 
 			var acceleration = force.clone();
 			acceleration.divideScalar(thingMass);
 
 			this.vel.add(acceleration);
 			this.mesh.position.add(this.vel);
+
+			this.posAngle += this.angularVel;
+			if (this.posAngle > 180) {
+				this.posAngle -= 360;
+			}
+			if (this.posAngle < -180) {
+				this.posAngle += 360;
+			}
+
+			var loc = new THREE.Vector3(0,1,arenaSize);
+			loc.applyEuler(new THREE.Euler( 0, toRad(this.posAngle), 0, 'XYZ' ));
+			this.mesh.position.set(loc.x, loc.y, loc.z);
+
+			this.mesh.lookAt(0, 0, 0);
 
 			this.vel.multiplyScalar(moveFriction);
 		}
@@ -178,9 +202,13 @@
 		var mass = 100;
 
 		this.angle = 0;
-		this.angularVel = rand(-10,10);
+		this.angularVel = 0;
 		this.vel = new THREE.Vector3(0,0,0);
 		var maxForce = 1.0;
+
+		this.angularPos = 0;
+		this.radialPos = 0;
+        this.radialVel = 0.04;
 
 		// initialise function
 		this.init = function() {
@@ -189,7 +217,12 @@
 		}
 
 		this.placeRandomly = function(spread) {
-			this.mesh.position.set(rand(-spread,spread), 1, rand(-spread,spread));
+			this.angularPos = Round(rand(-180, 180), 360, arenaStepsCirc);
+			this.angularVel = 0;
+			this.radialPos = 0;
+			this.radialVel = 0.002;
+
+			this.setPos();
 			this.mesh.visible = true;
 		}
 
@@ -197,31 +230,61 @@
 		this.update = function() {
 
 			// update angle
-			this.angle -= this.angularVel;	
+			//this.angle -= this.angularVel;
 			this.mesh.rotation.y = toRad(this.angle);
 
 			// update position
-			var force = new THREE.Vector3(rand(-maxForce,maxForce), 
+			/*var force = new THREE.Vector3(rand(-maxForce,maxForce), 
 										  0, 
-										  rand(-maxForce,maxForce));
+										  rand(-maxForce,maxForce));*/
 
 			// Keep it inside the circle
-			var outBy = this.mesh.position.length() > arenaSize;
-			if (outBy > 0)
-			{
-				var pushBack = this.mesh.position.clone();
-				pushBack.y = 0;
-				pushBack.negate();
-				force.add(pushBack);
+			if (this.radialPos >= 1) {
+				this.radialVel = 0;
+			
+
+				var angleDiff = thing.posAngle - this.angularPos;
+				if (angleDiff > 180) {
+					angleDiff -= 360;
+				}
+				if(angleDiff < -180) {
+					angleDiff += 360;
+				}
+				if (angleDiff > 0) {
+					this.angularVel = 0.1
+				} else {
+					this.angularVel = -0.1;
+				}
+
 			}
 
-			var acceleration = force.clone();
-			acceleration.divideScalar(mass);
+			this.angularPos += this.angularVel;
+			if(this.angularPos > 180) {
+				this.angularPos -= 360;
+			}
+			if(this.angularPos < -180) {
+				this.angularPos += 360;
+			}
 
-			this.vel.add(acceleration);
-			this.mesh.position.add(this.vel);
+			//var acceleration = force.clone();
+			//acceleration.divideScalar(mass);
 
-			this.vel.multiplyScalar(moveFriction);
+			//this.vel.add(acceleration);
+			this.radialPos += this.radialVel;
+
+			this.setPos();
+
+			//this.vel.multiplyScalar(moveFriction);
+		}
+
+		this.setPos = function() {
+			var discreteRadialPos = Round(this.radialPos, arenaSize, arenaStepsDepth);
+			var pos = new THREE.Vector3(0, 0, discreteRadialPos);
+
+			var discreteAngularPos = Round(this.angularPos / 360, 360, arenaStepsCirc);
+			pos.applyEuler(new THREE.Euler(0, toRad(discreteAngularPos), 0, 'XYZ'));
+			this.mesh.position.set(0, 1, 0);
+			this.mesh.position.add(pos);
 		}
 
 		this.active = function() {
@@ -262,9 +325,20 @@
 		});
 	}
 
-	var blobs = createBlobs(10);
-	placeBlobs();
+	function addBlob() {
+		for (var i = 0; i < blobs.length; i++) {
+			if(!blobs[i].active()) {
+				blobs[i].placeRandomly();
+				return;
+			}
+		}
+		var b = new Blob();
+		b.init();
+		blobs.push(b);
+	}
 
+	var blobs = createBlobs(10);
+	//placeBlobs();
 
 
 	// ---------------------------------------------
@@ -283,14 +357,18 @@
 				}
 			}
 		});
-		if (!haveActiveBlobs) {
-			placeBlobs();
+		//if (!haveActiveBlobs) {
+			//placeBlobs();
+		//}
+
+		if (Math.random() < 0.02) {
+			addBlob();
 		}
 	};
 
 	window.render = function() {
 		// update camera
-		camera.lookAt(thing.mesh.position);
+		//camera.lookAt(thing.mesh.position);
 
 		// draw
 		renderer.render(scene, camera);
