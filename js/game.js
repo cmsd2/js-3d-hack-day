@@ -8,7 +8,7 @@
 	// NOTE: +x is right, +y is up, +z points out of the screen
 	var renderer = new THREE.WebGLRenderer();
 	renderer.setSize(width, height);
-	renderer.setClearColor(new THREE.Color(0.1, 0.5, 0.7))
+	renderer.setClearColor(new THREE.Color(0.1, 0.05, 0.07))
 	renderer.shadowMap.enabled = true;
 
 	document.body.appendChild(renderer.domElement);
@@ -17,7 +17,7 @@
 	var scene = new THREE.Scene();
 
 	// light - sky and ground
-	var worldLight = new THREE.HemisphereLight(0x66ccff , 0x00aa00, 0.5);
+	var worldLight = new THREE.HemisphereLight(0x66ccff , 0xf0aa00, 0.5);
 	scene.add(worldLight)
 
 	// light - spot
@@ -32,23 +32,36 @@
 
 	// camera
 	var camera = new THREE.PerspectiveCamera(60, width/height, 0.1, 1000);
-	camera.position.set(0, 40, 20);
+	camera.position.set(0, 60, 20);
 	camera.lookAt(new THREE.Vector3(0,0,2));
 
+    var maxBlobs = 20;
+    var maxBullets = 20;
 	// floor plane
 	var arenaStepsDepth = 12;
 	var arenaStepsCirc = 18;
 
 	var arenaSize = 20;
-	var arenaDepth = arenaStepsDepth * 10;
+	var arenaDepth = arenaStepsDepth * 5;
 	var floorGeom = new THREE.CircleGeometry(arenaSize, 64);
 	var floor = new THREE.Mesh(floorGeom, makeMaterial({color:0x009f2f, shininess:1}));
-	scene.add(floor);
+	//scene.add(floor);
 	floor.receiveShadow = true;
 	floor.rotation.x = -toRad(90);
 
 	// controller utility object
 	var controller = new Controller(standardControls);
+
+	/*controller.onPressed = function(control) {
+		if(control.pressed && 0 == controller.buttons[control.button]) {
+		    if(control.which == "left") {
+			    thing.moveLeft();
+			}
+			if(control.which == "right") {
+				thing.moveRight();
+			}
+		}
+	};*/
 
 	// game objects
 	var rotFriction = 0.95;
@@ -100,6 +113,7 @@
 		};
 		// create mesh
 		var thingGeom = makeGeometry(thingSpec);
+		thingGeom.scale(5, 5, 5);
 		this.mesh = new THREE.Mesh(thingGeom, makeMaterial({color:0xffffff}));
 		this.mesh.castShadow = true;
 
@@ -121,25 +135,40 @@
 			this.mesh.position.set(0, 1, arenaSize);
 		}
 
+		this.moveLeft = function() {
+			this.posAngle -= 360 / arenaStepsCirc;
+		}
+
+		this.moveRight = function() {
+			this.posAngle += 360 / arenaStepsCirc;
+		}
+
+		this.setPos = function() {
+			var loc = new THREE.Vector3(0,1,arenaSize + 10);
+			this.discretePosAngle = Round(this.posAngle / 360, 360, arenaStepsCirc);
+			loc.applyEuler(new THREE.Euler( 0, toRad(this.discretePosAngle), 0, 'XYZ' ));
+			this.mesh.position.copy(loc);
+		}
+
 		// updates movements
 		this.update = function(state, t, dt) {
 
-			// update angle
+			// update angl
 			var rotForce = controller.rightLeft();
 
-			var rotAccel = rotForce / thingRotMass;
+			//var rotAccel = rotForce / thingRotMass;
 
-			this.angularVel += rotAccel;
+			//this.angularVel += rotAccel;
 
-			this.angle -= this.angularVel;	
-			this.mesh.rotation.y = toRad(-this.angle);
+			//this.angle -= this.angularVel;	
+			//this.mesh.rotation.y = toRad(-this.angle);
 
-			this.angularVel *= rotFriction; // simulated friction
+			//this.angularVel *= rotFriction; // simulated friction
 
 
 			// update position
-			var force = getForwardVector(this.mesh);
-			force.multiplyScalar(controller.forwardBack());
+			//var force = getForwardVector(this.mesh);
+			//force.multiplyScalar(controller.forwardBack());
 
 			// Keep it inside the circle
 			/*var outBy = this.mesh.position.length() > arenaSize;
@@ -152,11 +181,19 @@
 				force.add(pushBack);
 			}*/
 
-			var acceleration = force.clone();
-			acceleration.divideScalar(thingMass);
+			//var acceleration = force.clone();
+			//acceleration.divideScalar(thingMass);
 
-			this.vel.add(acceleration);
-			this.mesh.position.add(this.vel);
+			//this.vel.add(acceleration);
+			//this.mesh.position.add(this.vel);
+
+			if (rotForce < 0) {
+				this.angularVel = -2;
+			} else if (rotForce > 0) {
+				this.angularVel = 2;
+			} else {
+				this.angularVel = 0;
+			}
 
 			this.posAngle += this.angularVel;
 			if (this.posAngle > 180) {
@@ -166,16 +203,106 @@
 				this.posAngle += 360;
 			}
 
-			var loc = new THREE.Vector3(0,1,arenaSize);
-			loc.applyEuler(new THREE.Euler( 0, toRad(this.posAngle), 0, 'XYZ' ));
-			this.mesh.position.set(loc.x, loc.y, loc.z);
+			this.setPos();
 
-			this.mesh.lookAt(0, 0, 0);
+			this.mesh.lookAt(new THREE.Vector3(0, -arenaDepth/10, 0));
 
 			this.vel.multiplyScalar(moveFriction);
 		}
 	};
 
+    function Bullet() {
+
+    	function makeBulletGeom(r1, r2, h) {
+			var bulletSpec = { parts:[] };
+			
+				bulletSpec.parts.push(
+				{
+					shape: {
+						type: "cylinder", 
+					    r1:r1,
+					    r2:r2,
+					    h: h
+					 },
+					position: { x:0, y:0, z:0 }
+				});
+			
+			return makeGeometry(bulletSpec);
+    	}
+
+    	var bulletGeom = makeBulletGeom(0.5, 0.8, 10);
+    	bulletGeom.rotateX(toRad(-35));
+    	bulletGeom.translate(0, 15, -2);
+		bulletGeom.computeBoundingSphere();
+		this.mesh = new THREE.Mesh(bulletGeom, makeMaterial({color:0xffff00}));
+
+ 
+
+    	this.init = function(position, rotation, discretePosAngle) {
+			this.mesh.position.copy(position);
+			this.mesh.rotation.copy(rotation);
+			this.discretePosAngle = discretePosAngle;
+			this.setVel();
+			bullets.push(this);
+			scene.add(this.mesh);
+		};
+
+		this.setVel = function() {
+			var discreteRadialPos = Round(thing.posAngle, arenaSize, arenaStepsDepth) / arenaSize;
+
+			var discreteAngularPos = Round(thing.posAngle / 360, 360, arenaStepsCirc);
+
+			var edge = new THREE.Vector3(0, 0, arenaSize);
+			edge.applyEuler(new THREE.Euler(0, toRad(discreteAngularPos), 0, 'XYZ'));
+
+			var deepEdge = new THREE.Vector3(0, 0, 10);
+            deepEdge.applyEuler(new THREE.Euler(0, toRad(discreteAngularPos), 0, 'XYZ'));
+        
+			var deepOrigin = new THREE.Vector3(0, -arenaDepth, 0);
+			deepOrigin.add(deepEdge);
+			//var deepOrigin = new THREE.Vector3(0, -arenaDepth, 0);
+
+			var direction = edge.sub(deepOrigin);
+
+			direction.negate();
+
+			direction.multiplyScalar(0.1);
+
+			this.vel = direction;
+		}
+
+		this.destroy = function() {
+			var indexToRemove;
+			bullets.forEach(function (bullet, index) {
+				if (bullet == this) {
+					indexToRemove = index;
+				}
+			}.bind(this));
+			bullets.splice(indexToRemove, 1);
+			scene.remove(this.mesh);
+		}
+
+    	this.update = function() {
+			this.mesh.position.add(this.vel);
+
+			if(this.mesh.position.y < -arenaDepth - 20) {
+				this.destroy();
+			}
+    	}
+
+    	this.active = function() {
+			return this.mesh.visible;
+		}
+
+		this.hide = function() {
+			this.mesh.visible = false;
+		}
+
+		this.collidesWith = function(other) {
+			var d = this.mesh.position.distanceTo(other.mesh.position);
+			return (d < this.mesh.geometry.boundingSphere.radius);
+		}
+    };
 
 	// ---------------------------------------------
 	// blobs
@@ -194,7 +321,7 @@
 		}
 
 		// create mesh
-		var blobGeom = makeBlobGeom(10, 0.2, 0.8, 0.5);
+		var blobGeom = makeBlobGeom(10, 1, 4, 3);
 		blobGeom.computeBoundingSphere();
 		this.mesh = new THREE.Mesh(blobGeom, makeMaterial({color:0xffff00}));
 		this.mesh.castShadow = true;
@@ -208,7 +335,7 @@
 
 		this.angularPos = 0;
 		this.radialPos = 0;
-        this.radialVel = 0.04;
+        this.radialVel = 0.002;
 
 		// initialise function
 		this.init = function() {
@@ -217,7 +344,7 @@
 		}
 
 		this.placeRandomly = function(spread) {
-			this.angularPos = Round(rand(-180, 180), 360, arenaStepsCirc);
+			this.angularPos = Round(rand(-180, 180) / 360, 360, arenaStepsCirc);
 			this.angularVel = 0;
 			this.radialPos = 0;
 			this.radialVel = 0.002;
@@ -278,13 +405,25 @@
 		}
 
 		this.setPos = function() {
-			var discreteRadialPos = Round(this.radialPos, arenaSize, arenaStepsDepth);
-			var pos = new THREE.Vector3(0, 0, discreteRadialPos);
+			var discreteRadialPos = Round(this.radialPos, arenaSize, arenaStepsDepth) / arenaSize;
 
-			var discreteAngularPos = Round(this.angularPos / 360, 360, arenaStepsCirc);
-			pos.applyEuler(new THREE.Euler(0, toRad(discreteAngularPos), 0, 'XYZ'));
-			this.mesh.position.set(0, 1, 0);
-			this.mesh.position.add(pos);
+			this.discretePosAngle = Round(this.angularPos / 360, 360, arenaStepsCirc);
+
+			var edge = new THREE.Vector3(0, 0, arenaSize);
+			edge.applyEuler(new THREE.Euler(0, toRad(this.discretePosAngle), 0, 'XYZ'));
+
+            var deepEdge = new THREE.Vector3(0, 0, 10);
+            deepEdge.applyEuler(new THREE.Euler(0, toRad(this.discretePosAngle), 0, 'XYZ'));
+        
+			var deepOrigin = new THREE.Vector3(0, -arenaDepth, 0);
+			deepOrigin.add(deepEdge);
+
+			var direction = edge.sub(deepOrigin);
+			deepOrigin.addScaledVector(direction, discreteRadialPos);
+
+			this.mesh.position.copy(deepOrigin);
+			
+			//this.mesh.position.add(pos);
 		}
 
 		this.active = function() {
@@ -303,10 +442,59 @@
 	}
 
 	// ---------------------------------------------
+	// gun
+	function Gun() {
+		var OVERHEAT = 10;
+		var gunGeom = new THREE.SphereGeometry(0.1, 32, 32);
+
+		this.mesh = new THREE.Mesh(gunGeom, makeMaterial({color: 0xAAffff}));
+
+		this.attachTo = function(owner) {
+			owner.mesh.add(this.mesh);
+		};
+
+		this.fire = function() {
+			var bullet;
+
+			if (this.overheat > 0) {
+				return;
+			}
+
+			bullet = new Bullet();
+			bullet.init(this.mesh.parent.position, this.mesh.parent.rotation, thing.discretePosAngle);
+			bullet.visible = true;
+			bullets.push(bullet);
+
+			this.overheat = OVERHEAT;
+
+		};
+
+		this.removeFrom = function(owner) {
+			owner.mesh.remove(this.mesh);
+		};
+
+		this.init = function () {
+			//scene.add(this.mesh);
+		};
+
+		this.update = function () {
+			this.overheat -= 1;
+			if (controller.isButtonPressed(4)) {
+				this.fire();
+			}
+		};
+	}
+
+	// ---------------------------------------------
 
 	// create and initialise our thing
 	var thing = new Thing();
 	thing.init();
+
+	// Create and attach gun
+	var gun = new Gun();
+	gun.attachTo(thing);
+	gun.init();
 
 	// create and initialise blobs
 	function createBlobs(num) {
@@ -332,13 +520,32 @@
 				return;
 			}
 		}
-		var b = new Blob();
-		b.init();
-		blobs.push(b);
+		if(blobs.length < maxBlobs) {
+		    var b = new Blob();
+		    b.init();
+		    blobs.push(b);
+		}
 	}
 
-	var blobs = createBlobs(10);
-	//placeBlobs();
+	function addBullet(pos, dir) {
+        for (var i = 0; i < bullets.length; i++) {
+			if(!bullets[i].active()) {
+				bullets[i].place(pos, dir);
+				return;
+			}
+		}
+		if(bullets.length < maxBullets) {
+		    var b = new Bullet();
+		    b.init();
+		    b.place(pos, dir);
+		    bullets.push(b);
+		}
+	}
+
+	var blobs = createBlobs(1);
+	placeBlobs();
+
+	var bullets = [];
 
 
 	// ---------------------------------------------
@@ -346,6 +553,18 @@
 	window.integrate = function update() {
 
 		thing.update();
+		gun.update();
+
+		var haveActiveBullets = false;
+		bullets.forEach( function(bullet) {
+			if (bullet.active()) {
+				bullet.update();
+				haveActiveBullets = true;
+				/*if (bullet.collidesWith(thing)) {
+					blob.hide();
+				}*/
+			}
+		});
 
 		var haveActiveBlobs = false;
 		blobs.forEach( function(blob) {
@@ -355,13 +574,24 @@
 				if (blob.collidesWith(thing)) {
 					blob.hide();
 				}
+
+				bullets.forEach(function(bullet) {
+					if(bullet.active()) {
+						if (bullet.discretePosAngle == blob.discretePosAngle) {
+							if((bullet.mesh.position.y+10) <= blob.mesh.position.y) {
+						        blob.hide();
+						        bullet.destroy();
+							}
+				    	}
+					}
+				});
 			}
 		});
-		//if (!haveActiveBlobs) {
-			//placeBlobs();
-		//}
+		if (!haveActiveBlobs) {
+			placeBlobs();
+		}
 
-		if (Math.random() < 0.02) {
+		if (Math.random() < 0.015) {
 			addBlob();
 		}
 	};
