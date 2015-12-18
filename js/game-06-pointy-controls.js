@@ -96,7 +96,7 @@
 
 	// ---------------------------------------------
 	// main loop
-	function update() {
+	window.integrate = function update() {
 
 		// update position and angle
 		thingAngle -= controller.rightLeft() * rotateSpeed;
@@ -109,15 +109,11 @@
 
 		// update camera
 		camera.lookAt(thingMesh.position);
-
-		// draw
-		renderer.render(scene, camera);
-
-		// next frame
-		requestAnimationFrame(update);
 	};
 
-	// start updates
-	update();
+	window.render = function() {
+		// draw
+		renderer.render(scene, camera);
+	};
 
 }());

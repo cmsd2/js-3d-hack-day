@@ -10,6 +10,7 @@
 	renderer.setSize(width, height);
 	renderer.setClearColor(new THREE.Color(0.1, 0.5, 0.7))
 	renderer.shadowMap.enabled = true;
+	renderer.shadowMapSoft = true;
 
 	document.body.appendChild(renderer.domElement);
 
@@ -28,6 +29,8 @@
 	spotLight.shadowCameraNear = 5;
 	spotLight.shadowCameraFar = 50;
 	spotLight.shadowCameraFov = toDeg(spotLight.angle);
+	spotLight.shadowMapWidth = 4096;
+	spotLight.shadowMapHeight = 4096;
 	spotLight.position.set(10, 20, 0);
 
 	// camera
@@ -91,6 +94,7 @@
 	// ---------------------------------------------
 	// main loop
 	function update() {
+		window.fpsCounter();
 
 		thingMesh.rotation.y = toRad(thingAngle);
 		thingAngle++;

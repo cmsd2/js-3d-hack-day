@@ -156,21 +156,19 @@
 
 	// ---------------------------------------------
 	// main loop
-	function update() {
+	window.integrate = function update(state, t, dt) {
 
-		thing.update();
+		thing.update(state, t, dt);
 		
 		// update camera
 		camera.lookAt(thing.mesh.position);
+	};
 
+	window.render = function(){
 		// draw
 		renderer.render(scene, camera);
 
-		// next frame
-		requestAnimationFrame(update);
 	};
 
-	// start updates
-	update();
 	
 }());

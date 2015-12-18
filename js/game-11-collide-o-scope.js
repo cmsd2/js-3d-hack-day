@@ -269,7 +269,7 @@
 
 	// ---------------------------------------------
 	// main loop
-	function update() {
+	window.integrate = function update() {
 
 		thing.update();
 
@@ -286,18 +286,14 @@
 		if (!haveActiveBlobs) {
 			placeBlobs();
 		}
-		
+	};
+
+	window.render = function() {
 		// update camera
 		camera.lookAt(thing.mesh.position);
 
 		// draw
 		renderer.render(scene, camera);
-
-		// next frame
-		requestAnimationFrame(update);
 	};
-
-	// start updates
-	update();
 	
 }());

@@ -102,7 +102,7 @@
 
 	// ---------------------------------------------
 	// main loop
-	function update() {
+	window.integrate = function update(state, t, dt) {
 
 		// update angle
 		var rotForce = controller.rightLeft();
@@ -132,15 +132,12 @@
 
 		// update camera
 		camera.lookAt(thingMesh.position);
-
-		// draw
-		renderer.render(scene, camera);
-
-		// next frame
-		requestAnimationFrame(update);
 	};
 
-	// start updates
-	update();
+	window.render = function() {
+		// draw
+		renderer.render(scene, camera);
+	};
+
 	
 }());

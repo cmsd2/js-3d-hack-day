@@ -5,11 +5,28 @@
 		<style>/*canvas { width: 90%; height: 90% }*/</style>
 	</head>
 	<body>
+	<div id="fps"></div>
 <!-- 		<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r73/three.js"></script> -->
 		<script src="js/external/three.js"></script>
 		<script src="js/gk-utils.js"></script>
+<script src="js/game_loop.js"></script>
+<script type="text/javascript">
+// The higher this value, the less the fps will reflect temporary variations
+// A value of 1 will only keep the last value
+var filterStrength = 20;
+var frameTime = 0, lastLoop = new Date, thisLoop;
 
-		<script src="js/game-01-nothin.js"></script>
+window.fps = function(newFrameTime){
+  frameTime = newFrameTime;
+}
+
+// Report the fps only every second, to only lightly affect measurements
+var fpsOut = document.getElementById('fps');
+setInterval(function(){
+  fpsOut.innerHTML = (1/frameTime).toFixed(1) + " fps";
+},1000);
+</script>
+<!-- 		<script src="js/game-01-nothin.js"></script> -->
 <!-- 		<script src="js/game-02-lights-camera-no-action.js"></script> -->
 <!-- 		<script src="js/game-03-spot-the-shadow.js"></script> -->
 <!-- 		<script src="js/game-04-the-thing.js"></script> -->
@@ -21,6 +38,15 @@
 <!-- 		<script src="js/game-10-the-others.js"></script> -->
 <!-- 		<script src="js/game-11-collide-o-scope.js"></script> -->
 
-<!-- 		<script src="js/game.js"></script> -->
+		<script src="js/game.js"></script>
+
+<script type="text/javascript">
+var geometry = new THREE.BoxGeometry( 10, 10, 10 );
+			var material = makeMaterial( { color: 0xff0f00, shininess: 1 } );
+			var cube = new THREE.Mesh( geometry, material );
+// 			scene.add( cube );
+
+window.game_loop();
+</script>
 	</body>
 </html>

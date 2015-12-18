@@ -255,24 +255,21 @@
 
 	// ---------------------------------------------
 	// main loop
-	function update() {
+	window.integrate = function update(state, t, dt) {
 
 		thing.update();
 		blobs.forEach( function(blob) { 
 			blob.update(); 
 		});
-		
+	}
+
+	window.render = function() {
 		// update camera
 		camera.lookAt(thing.mesh.position);
 
 		// draw
 		renderer.render(scene, camera);
-
-		// next frame
-		requestAnimationFrame(update);
 	};
 
-	// start updates
-	update();
 	
 }());

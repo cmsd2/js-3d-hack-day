@@ -10,6 +10,7 @@
 	renderer.setSize(width, height);
 	renderer.setClearColor(new THREE.Color(0.1, 0.5, 0.7))
 	renderer.shadowMap.enabled = true;
+	renderer.shadowMapSoft = true;
 
 	document.body.appendChild(renderer.domElement);
 
@@ -28,6 +29,8 @@
 	spotLight.shadowCameraNear = 5;
 	spotLight.shadowCameraFar = 50;
 	spotLight.shadowCameraFov = toDeg(spotLight.angle);
+	spotLight.shadowMapWidth = 1024;
+	spotLight.shadowMapHeight = 1024;
 	spotLight.position.set(10, 20, 0);
 
 	// camera
@@ -46,7 +49,7 @@
 	// sphere
 	var ballRad = 2;
 	var ballGeom = new THREE.SphereGeometry(ballRad, 32, 32);
-	var ball = new THREE.Mesh(ballGeom, makeMaterial({color:0xffffff, shininess:100}));
+	var ball = new THREE.Mesh(ballGeom, makeMaterial({color:0xffffff, shininess:4}));
 	scene.add(ball);
 	ball.castShadow = true;
 	ball.position.set(0, 2, 0);
