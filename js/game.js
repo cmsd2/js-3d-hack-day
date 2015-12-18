@@ -8,7 +8,7 @@
 	// NOTE: +x is right, +y is up, +z points out of the screen
 	var renderer = new THREE.WebGLRenderer();
 	renderer.setSize(width, height);
-	renderer.setClearColor(new THREE.Color(0.1, 0.05, 0.07))
+	renderer.setClearColor(new THREE.Color(0.1, 0.05, 0.17))
 	renderer.shadowMap.enabled = true;
 
 	document.body.appendChild(renderer.domElement);
@@ -35,6 +35,7 @@
 	camera.position.set(0, 60, 20);
 	camera.lookAt(new THREE.Vector3(0,0,2));
 
+    var score = 0;
     var maxBlobs = 20;
     var maxBullets = 20;
 	// floor plane
@@ -232,9 +233,11 @@
 
     	var bulletGeom = makeBulletGeom(0.5, 0.8, 10);
     	bulletGeom.rotateX(toRad(-35));
-    	bulletGeom.translate(0, 15, -2);
+    	bulletGeom.translate(0, 0, 5);
 		bulletGeom.computeBoundingSphere();
-		this.mesh = new THREE.Mesh(bulletGeom, makeMaterial({color:0xffff00}));
+		var material = makeMaterial({color:0xffff00});
+		material.emissive.setHex(0xff0000);
+		this.mesh = new THREE.Mesh(bulletGeom, material);
 
  
 
@@ -563,6 +566,22 @@
 				/*if (bullet.collidesWith(thing)) {
 					blob.hide();
 				}*/
+
+                var removeBullet;
+				blobs.forEach(function(blob) {
+					if(blob.active()) {
+						if (bullet.discretePosAngle == blob.discretePosAngle) {
+							if((blob.mesh.position.y-10) >= bullet.mesh.position.y) {
+						        blob.hide();
+						        removeBullet = true;
+						        score += 10;
+							}
+				    	}
+					}
+				});
+				if(removeBullet) {
+					bullet.destroy();
+				}
 			}
 		});
 
@@ -574,17 +593,6 @@
 				if (blob.collidesWith(thing)) {
 					blob.hide();
 				}
-
-				bullets.forEach(function(bullet) {
-					if(bullet.active()) {
-						if (bullet.discretePosAngle == blob.discretePosAngle) {
-							if((bullet.mesh.position.y+10) <= blob.mesh.position.y) {
-						        blob.hide();
-						        bullet.destroy();
-							}
-				    	}
-					}
-				});
 			}
 		});
 		if (!haveActiveBlobs) {
@@ -594,6 +602,9 @@
 		if (Math.random() < 0.015) {
 			addBlob();
 		}
+
+		var scoreEl = document.getElementById('score');
+        scoreEl.innerHTML = score;
 	};
 
 	window.render = function() {
